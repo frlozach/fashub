@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAS Portal – Navigation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #eef0f6;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .stage {
+    position: relative;
+    width: 620px;
+    height: 620px;
+  }
+
+  #nav-svg { width: 100%; height: 100%; overflow: visible; }
+
+  .link-dot { cursor: pointer; }
+  .link-dot:hover { filter: brightness(1.25) drop-shadow(0 0 6px currentColor); }
+
+  .branch-badge {
+    position: absolute;
+    background: #fff;
+    border-radius: 20px;
+    padding: 5px 13px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.13);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.85);
+    transition: opacity .28s, transform .28s cubic-bezier(.34,1.56,.64,1);
+    z-index: 50;
+  }
+  .branch-badge.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .link-tooltip {
+    position: absolute;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .16s, transform .16s;
+    z-index: 200;
+  }
+  .link-tooltip.show { opacity: 1; transform: translateY(0); }
+
+  .panel-area {
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 660px;
+    padding: 0 1rem;
+    margin-top: 0.6rem;
+  }
+  .pills-wrap {
+    display: flex; flex-wrap: wrap; gap: 9px; justify-content: center;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .3s, transform .3s;
+  }
+  .pills-wrap.show { opacity: 1; transform: translateY(0); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 20px; border-radius: 28px;
+    font-size: 12.5px; font-weight: 600; color: #fff;
+    cursor: pointer; text-decoration: none; border: none;
+    transition: transform .18s, filter .18s;
+    white-space: nowrap;
+  }
+  .pill:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+  .hint {
+    font-size: 11px; color: #bbb; letter-spacing: 0.05em; margin-top: 1.1rem;
+  }
+
+  /* ── Dropdown menu bar ───────────────────────────────────── */
+  .dropdown-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 2rem;
+    width: 680px;
+    max-width: 100%;
+  }
+
+  .dd-item {
+    position: relative;
+  }
+
+  .dd-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 24px;
+    border: none;
+    background: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  }
+  .dd-trigger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+  .dd-trigger .dd-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dd-trigger .dd-chevron {
+    width: 10px; height: 10px; flex-shrink: 0;
+    transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+    opacity: 0.5;
+  }
+  .dd-item.open .dd-chevron { transform: rotate(180deg); }
+
+  .dd-menu {
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px) scale(0.96);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
+    padding: 6px 0;
+    min-width: 190px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s, transform .22s cubic-bezier(.34,1.56,.64,1);
+    z-index: 300;
+    white-space: nowrap;
+  }
+  .dd-item.open .dd-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  .dd-link {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #2a2d3e;
+    text-decoration: none;
+    transition: background .12s;
+  }
+  .dd-link:hover { background: #f4f5fb; }
+  .dd-link .dd-link-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; opacity: 0.75;
+  }
+
+  .dd-separator {
+    height: 1px;
+    background: #eef0f6;
+    margin: 4px 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <svg id="nav-svg" viewBox="0 0 620 620"></svg>
+</div>
+<div class="panel-area">
+  <div class="pills-wrap" id="pills-wrap"></div>
+</div>
+
+<nav class="dropdown-bar" id="dropdown-bar" aria-label="FAS Portal navigation"></nav>
+
+<p class="hint">Hover over a branch · the circles expand outward</p>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  ★  ZONE DE CONFIGURATION — modifiez uniquement cette section
+// ════════════════════════════════════════════════════════════
+
+const sections = [
+  {
+    label: "FAS Projects",
+    color: "#4A6CF7",
+    links: [
+      { text: "Project Entry Form", url: "https://agilent.sharepoint.com/sites/fas-project-hub/_layouts/15/guestaccess.aspx?nav=YTQ5MzliMGMtNzgyZC00NjJjLWIyNjMtMTk3NjUyMTk3MDcw&share=JABgthBhbZG4T7L11VISovZkATmnrd7EQ_Y84rjIf1UKXd4" },
+      { text: "Project Tracker",    url: "https://agilent.sharepoint.com/sites/fas-project-hub/Lists/FASProjectHub1/Grid%20View.aspx" }
+    ]
+  },
+  {
+    label: "Pathogen Initiative",
+    color: "#0EA47A",
+    links: [
+      { text: "Seminars",      url: "https://agilent.sharepoint.com/sites/fas-project-hub/SitePages/Pathogens-Seminars.aspx" },
+      { text: "Design Shared", url: "https://designservice.scs.agilent.com/projects/templates/wiki/Agilent_Pathogen_Designs" }
+    ]
+  },
+  {
+    label: "Genomic Protocols",
+    color: "#8B44C8",
+    links: [
+      { text: "NGS Protocols", url: "https://agilent.sharepoint.com/:u:/r/sites/fas-project-hub/SitePages/PROTOCOLS_NGS.aspx?csf=1&web=1&e=FIKfuX" },
+      { text: "Microarray Protocols",    url: "https://agilent.sharepoint.com/:u:/r/sites/fas-project-hub/SitePages/PROTOCOLS_MicroArrays.aspx?csf=1&web=1&e=0DBe6Z" },
+      { text: "Automation Protocols",    url: "https://agilent.sharepoint.com/:u:/r/sites/fas-project-hub/SitePages/PROTOCOLS_Automation.aspx?csf=1&web=1&e=GDiGfO" }
+    ]
+  },
+  {
+    label: "Bioinformatic",
+    color: "#C8950A",
+    links: [
+      { text: "Healthomics",   url: "https://agilent.sharepoint.com/:u:/r/sites/fas-project-hub/SitePages/HEALTHOMICS.aspx?csf=1&web=1&e=U58X18" },
+      { text: "Internal Tools",url: "https://agilent.sharepoint.com/:u:/r/sites/fas-project-hub/SitePages/INTERNAL-BIOIN.aspx?csf=1&web=1&e=X0TW1K" }
+    ]
+  },
+  {
+    label: "App Note",
+    color: "#E8612A",
+    links: [
+      { text: "App Note List",       url: "https://agilent.sharepoint.com/:u:/r/sites/fas-project-hub/SitePages/AppNotes_MuA.aspx?csf=1&web=1&e=7Vj1IK" },
+      { text: "App Note Entry Form", url: "https://agilent.sharepoint.com/sites/genomics-marketing/_layouts/15/listforms.aspx?cid=ZGRmN2FkM2EtMGRmZi00NzBmLWE5ODYtOWI2Y2UxNzU4ZDc3&ct=1778145263880&or=Teams-HL&nav=Y2VjNWUwN2QtODA3OS00ODliLWFlOTAtMTZjZjRlYWFjNDhj&LOF=1" },
+      { text: "Design Service Published Papers", url: "https://designservice.scs.agilent.com/projects/publications/wiki/Wiki" }
+    ]
+  },
+  {
+    label: "FAS Other Resources",
+    color: "#D63055",
+    links: [
+      { text: "Documents Hub", url: "https://agilent.sharepoint.com/sites/fas-project-hub/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Ffas%2Dproject%2Dhub%2FShared%20Documents%2FProjects&viewid=4ed4acd3%2Dd249%2D4459%2D8d10%2Deaec5d4d6e8c" },
+      { text: "Design Service", url: "https://designservice.scs.agilent.com/login" }
+    ]
+  }
+];
+
+// ════════════════════════════════════════════════════════════
+//  FIN DE LA ZONE DE CONFIGURATION
+// ════════════════════════════════════════════════════════════
+
+const CX = 310, CY = 310;
+
+const BRANCH_ANGLES = [270, 330, 30, 90, 150, 210];
+
+const DOT_CONFIGS = [
+  { r: 23, d: 62  },
+  { r: 17, d: 108 },
+  { r: 12, d: 152 },
+  { r:  8, d: 190 },
+  { r:  5, d: 222 },
+];
+
+function getLinkDotIndices(numLinks) {
+  return Array.from({ length: Math.min(numLinks, 3) }, (_, i) => i);
+}
+
+const svg       = document.getElementById('nav-svg');
+const stage     = document.getElementById('stage');
+const pillsWrap = document.getElementById('pills-wrap');
+const dropBar   = document.getElementById('dropdown-bar');
+
+function toRad(deg) { return deg * Math.PI / 180; }
+function ptOf(dist, angleDeg) {
+  const r = toRad(angleDeg);
+  return [CX + Math.cos(r) * dist, CY + Math.sin(r) * dist];
+}
+
+let activeIdx = -1, hideTimer = null;
+const branchData = [];
+const badges     = [];
+
+// ── Active branches ──────────────────────────────────────────
+sections.forEach((sec, si) => {
+  const angleDeg = BRANCH_ANGLES[si];
+  const rad      = toRad(angleDeg);
+  const linkIdxs = getLinkDotIndices(sec.links.length);
+  const dots     = [];
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.dataset.si = si;
+
+  DOT_CONFIGS.forEach(({ r, d }, di) => {
+    const [bx, by] = ptOf(d, angleDeg);
+    const isLink   = linkIdxs.includes(di);
+    const linkRank = linkIdxs.indexOf(di);
+
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', bx);
+    c.setAttribute('cy', by);
+    c.setAttribute('r',  r);
+    c.setAttribute('fill', sec.color);
+    c.setAttribute('stroke', '#eef0f6');
+    c.setAttribute('stroke-width', isLink ? '2.5' : '1.5');
+    c.setAttribute('opacity', isLink ? '1' : '0.45');
+    c.style.transition = [
+      'cx .44s cubic-bezier(.34,1.56,.64,1)',
+      'cy .44s cubic-bezier(.34,1.56,.64,1)',
+      'r  .36s cubic-bezier(.34,1.56,.64,1)',
+      'opacity .25s'
+    ].join(', ');
+
+    if (isLink) {
+      c.classList.add('link-dot');
+      const linkObj = sec.links[linkRank];
+
+      c.addEventListener('mouseenter', e => {
+        activate(si);
+        showTip(e, linkObj.text, sec.color);
+      });
+      c.addEventListener('mouseleave', () => {
+        hideTip();
+        scheduleHide(si);
+      });
+      c.addEventListener('click', () => {
+        window.open(linkObj.url, '_blank');
+      });
+    }
+
+    g.appendChild(c);
+    dots.push({ el: c, bx, by, r, isLink, d, rad });
+  });
+
+  g.addEventListener('mouseenter', () => activate(si));
+  g.addEventListener('mouseleave', () => scheduleHide(si));
+  svg.appendChild(g);
+  branchData.push(dots);
+
+  const [tipX, tipY] = ptOf(258, angleDeg);
+  const badge = document.createElement('div');
+  badge.className    = 'branch-badge';
+  badge.style.color  = sec.color;
+  badge.style.border = `1.5px solid ${sec.color}44`;
+  badge.style.left   = (tipX / 620 * 100) + '%';
+  badge.style.top    = (tipY / 620 * 100) + '%';
+  badge.textContent  = sec.label;
+  stage.appendChild(badge);
+  badges.push(badge);
+});
+
+// ── Center circle ────────────────────────────────────────────
+const cg = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+const halo = document.createElementNS('http://www.w3.org/2000/svg','circle');
+halo.setAttribute('cx',CX); halo.setAttribute('cy',CY); halo.setAttribute('r',48);
+halo.setAttribute('fill','#dde2f2'); halo.setAttribute('opacity','0.65');
+cg.appendChild(halo);
+
+const disk = document.createElementNS('http://www.w3.org/2000/svg','circle');
+disk.setAttribute('cx',CX); disk.setAttribute('cy',CY); disk.setAttribute('r',38);
+disk.setAttribute('fill','#ffffff');
+disk.setAttribute('stroke','#cdd4ee'); disk.setAttribute('stroke-width','1.5');
+cg.appendChild(disk);
+
+const lt = document.createElementNS('http://www.w3.org/2000/svg','text');
+lt.setAttribute('x',CX); lt.setAttribute('y',CY-4);
+lt.setAttribute('text-anchor','middle'); lt.setAttribute('dominant-baseline','central');
+lt.style.cssText = 'font-size:17px;font-weight:800;fill:#1a1d2e;letter-spacing:-0.5px';
+lt.textContent = 'FAS';
+cg.appendChild(lt);
+
+const sub = document.createElementNS('http://www.w3.org/2000/svg','text');
+sub.setAttribute('x',CX); sub.setAttribute('y',CY+14);
+sub.setAttribute('text-anchor','middle');
+sub.style.cssText = 'font-size:7px;font-weight:700;fill:#8890b0;letter-spacing:0.13em';
+sub.textContent = 'PORTAL';
+cg.appendChild(sub);
+
+svg.appendChild(cg);
+
+// ── Tooltip ───────────────────────────────────────────────────
+const tip = document.createElement('div');
+tip.className = 'link-tooltip';
+stage.appendChild(tip);
+
+function showTip(e, text, color) {
+  const rect = stage.getBoundingClientRect();
+  tip.textContent = text;
+  tip.style.borderLeft = `3px solid ${color}`;
+  tip.style.left = (e.clientX - rect.left + 14) + 'px';
+  tip.style.top  = (e.clientY - rect.top  - 40) + 'px';
+  tip.classList.add('show');
+}
+function hideTip() { tip.classList.remove('show'); }
+
+// ── Star interaction ─────────────────────────────────────────
+const DEPLOY = 0.42;
+
+function activate(si) {
+  clearTimeout(hideTimer);
+  if (activeIdx === si) return;
+  if (activeIdx !== -1) collapse(activeIdx, true);
+  activeIdx = si;
+
+  sections.forEach((_, j) => {
+    if (j !== si) {
+      const g = svg.querySelector(`g[data-si="${j}"]`);
+      if (g) g.querySelectorAll('circle').forEach(c => c.style.opacity = '0.12');
+    }
+  });
+
+  branchData[si].forEach(({ el, d, rad, r, isLink }, di) => {
+    setTimeout(() => {
+      const nd = d * (1 + DEPLOY);
+      el.setAttribute('cx', CX + Math.cos(rad) * nd);
+      el.setAttribute('cy', CY + Math.sin(rad) * nd);
+      el.setAttribute('r',  r * (isLink ? 1.40 : 1.18));
+      el.setAttribute('opacity', isLink ? '1' : '0.65');
+    }, di * 44);
+  });
+
+  badges[si].classList.add('show');
+
+  pillsWrap.innerHTML = '';
+  pillsWrap.classList.remove('show');
+  const sec = sections[si];
+  sec.links.forEach((lk, k) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.className = 'pill';
+      a.href = lk.url;
+      a.target = '_blank';
+      a.style.background = sec.color;
+      a.style.boxShadow  = `0 4px 14px ${sec.color}55`;
+      a.textContent = lk.text;
+      pillsWrap.appendChild(a);
+    }, k * 65 + 110);
+  });
+  setTimeout(() => pillsWrap.classList.add('show'), 80);
+}
+
+function collapse(si, silent) {
+  branchData[si].forEach(({ el, bx, by, r, isLink }) => {
+    el.style.transition = 'cx .32s ease, cy .32s ease, r .28s ease, opacity .22s';
+    el.setAttribute('cx', bx);
+    el.setAttribute('cy', by);
+    el.setAttribute('r',  r);
+    el.setAttribute('opacity', isLink ? '1' : '0.45');
+  });
+  badges[si].classList.remove('show');
+  if (!silent) {
+    sections.forEach((_, j) => {
+      const g = svg.querySelector(`g[data-si="${j}"]`);
+      if (g) g.querySelectorAll('circle').forEach(c => c.style.opacity = '');
+    });
+    pillsWrap.classList.remove('show');
+    setTimeout(() => pillsWrap.innerHTML = '', 300);
+    activeIdx = -1;
+  }
+}
+
+function scheduleHide(si) {
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    if (activeIdx === si) collapse(si, false);
+  }, 260);
+}
+
+// ── Build dropdown bar ────────────────────────────────────────
+let openItem = null;
+
+sections.forEach((sec, si) => {
+  const item = document.createElement('div');
+  item.className = 'dd-item';
+
+  const btn = document.createElement('button');
+  btn.className = 'dd-trigger';
+  btn.style.color = sec.color;
+
+  const dot = document.createElement('span');
+  dot.className = 'dd-dot';
+  dot.style.background = sec.color;
+
+  const label = document.createElement('span');
+  label.textContent = sec.label;
+
+  const chevron = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  chevron.setAttribute('viewBox','0 0 10 10');
+  chevron.setAttribute('width','10');
+  chevron.setAttribute('height','10');
+  chevron.classList.add('dd-chevron');
+  chevron.innerHTML = '<polyline points="1,3 5,7 9,3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+
+  btn.appendChild(dot);
+  btn.appendChild(label);
+  btn.appendChild(chevron);
+
+  const menu = document.createElement('div');
+  menu.className = 'dd-menu';
+  menu.setAttribute('role','menu');
+
+  sec.links.forEach((lk, li) => {
+    if (li > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'dd-separator';
+      menu.appendChild(sep);
+    }
+    const a = document.createElement('a');
+    a.className = 'dd-link';
+    a.href = lk.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.setAttribute('role','menuitem');
+
+    const ldot = document.createElement('span');
+    ldot.className = 'dd-link-dot';
+    ldot.style.background = sec.color;
+
+    a.appendChild(ldot);
+    a.appendChild(document.createTextNode(lk.text));
+    menu.appendChild(a);
+  });
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isOpen = item.classList.contains('open');
+    if (openItem && openItem !== item) openItem.classList.remove('open');
+    item.classList.toggle('open', !isOpen);
+    openItem = !isOpen ? item : null;
+  });
+
+  item.appendChild(btn);
+  item.appendChild(menu);
+  dropBar.appendChild(item);
+});
+
+document.addEventListener('click', () => {
+  if (openItem) { openItem.classList.remove('open'); openItem = null; }
+});
+</script>
+</body>
+</html>
